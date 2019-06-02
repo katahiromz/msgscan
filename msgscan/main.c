@@ -61,6 +61,8 @@ BOOL DoData(HWND hwnd, LPTSTR psz)
     {
         DestroyWindow(hwnd);
     }
+
+    return TRUE;
 }
 
 int main(int argc, char **argv)

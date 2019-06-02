@@ -1,6 +1,7 @@
 // msgscan.c --- Windows message dumper
 // Copyright (C) 2019 Katayama Hirofumi MZ <katayama.hirofumi.mz@gmail.com>.
 // This file is public domain software.
+#define _CRT_SECURE_NO_WARNINGS
 #include "targetver.h"
 #include <windows.h>
 #include <windowsx.h>
@@ -68,8 +69,10 @@ BOOL DoUnhook(HWND hwnd)
 BOOL DoHook(HWND hwnd, HWND hwndTarget)
 {
     TCHAR szPath[MAX_PATH];
+    LPTSTR pch;
+    
     GetModuleFileName(NULL, szPath, ARRAYSIZE(szPath));
-    LPTSTR pch = PathFindFileName(szPath);
+    pch = PathFindFileName(szPath);
     if (pch && *pch)
         *pch = 0;
 
@@ -225,11 +228,12 @@ BOOL GetFileNameFromProcess(LPTSTR pszPath, DWORD cchPath, HANDLE hProcess)
 
 BOOL GetFileNameFromPID(LPTSTR pszPath, DWORD cchPath, DWORD pid)
 {
+    BOOL ret;
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (!hProcess)
         return FALSE;
 
-    BOOL ret = GetFileNameFromProcess(pszPath, cchPath, hProcess);
+    ret = GetFileNameFromProcess(pszPath, cchPath, hProcess);
     CloseHandle(hProcess);
     return ret;
 }
@@ -257,12 +261,13 @@ BOOL CheckTarget(HWND hwndTarget)
     INT bits = 0;
     DWORD dwBinType;
     HANDLE hProcess;
+    BOOL bIsWow64;
 
     GetWindowThreadProcessId(hwndTarget, &pid);
 
     GetFileNameFromPID(szTargetPath, ARRAYSIZE(szTargetPath), pid);
 
-    BOOL bIsWow64 = FALSE;
+    bIsWow64 = FALSE;
     hProcess = OpenProcess(GENERIC_READ, TRUE, pid);
     if (hProcess)
     {
