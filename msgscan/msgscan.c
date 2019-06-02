@@ -12,9 +12,9 @@
 #include <stdio.h>
 
 #ifdef _WIN64
-    #define VERSION_INFO "msgscan64 ver.0.0 by katahiromz"
+    #define VERSION_INFO "msgscan64 ver.0.1 by katahiromz"
 #else
-    #define VERSION_INFO "msgscan32 ver.0.0 by katahiromz"
+    #define VERSION_INFO "msgscan32 ver.0.1 by katahiromz"
 #endif
 
 void show_version(void)
@@ -321,6 +321,42 @@ BOOL CheckTarget(HWND hwndTarget)
     return FALSE;
 }
 
+typedef struct FIND_WND
+{
+    const char *class_name;
+    const char *text;
+    HWND hwndFound;
+} FIND_WND;
+
+static BOOL CALLBACK
+EnumWindowsProc(HWND hwnd, LPARAM lParam)
+{
+    char szClass[128], szText[128];
+    FIND_WND *find = (FIND_WND *)lParam;
+
+    GetClassNameA(hwnd, szClass, ARRAYSIZE(szClass));
+    GetWindowTextA(hwnd, szText, ARRAYSIZE(szText));
+
+    if (find->class_name)
+    {
+        if (lstrcmpiA(szClass, find->class_name) != 0)
+        {
+            return TRUE;
+        }
+    }
+
+    if (find->text)
+    {
+        if (lstrcmpiA(szText, find->text) != 0)
+        {
+            return TRUE;
+        }
+    }
+
+    find->hwndFound = hwnd;
+    return FALSE;
+}
+
 BOOL
 DoCreateWindow(HWND hwndTarget,
                const char *class_name,
@@ -329,6 +365,7 @@ DoCreateWindow(HWND hwndTarget,
 {
     WNDCLASS wc;
     HWND hwnd;
+    FIND_WND find;
 
     if (hwndTarget)
     {
@@ -337,11 +374,19 @@ DoCreateWindow(HWND hwndTarget,
     else
     {
         g_hwndTarget = FindWindowA(class_name, text);
+        if (!g_hwndTarget)
+        {
+            find.class_name = class_name;
+            find.text = text;
+            find.hwndFound = NULL;
+            EnumWindows(EnumWindowsProc, (LPARAM)&find);
+            g_hwndTarget = find.hwndFound;
+        }
     }
 
     if (!IsWindow(g_hwndTarget))
     {
-        fprintf(stderr, "ERROR: invalid handle: %p\n", (void *)g_hwndTarget);
+        fprintf(stderr, "ERROR: invalid window handle: %p\n", (void *)g_hwndTarget);
         return FALSE;
     }
 
