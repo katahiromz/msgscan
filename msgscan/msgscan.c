@@ -10,37 +10,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-
-#ifdef _WIN64
-    #define VERSION_INFO "msgscan64 ver.0.3 by katahiromz"
-#else
-    #define VERSION_INFO "msgscan32 ver.0.3 by katahiromz"
-#endif
-
-void show_version(void)
-{
-    fprintf(stderr, "%s\n", VERSION_INFO);
-}
-
-void show_help(void)
-{
-#ifdef _WIN64
-    printf("Usage: msgscan64 --handle <HWND> [output-file]\n");
-    printf("Usage: msgscan64 --class \"window class\" [output-file]\n");
-    printf("Usage: msgscan64 --class \"window class\" --text \"window text\" [output-file]\n");
-#else
-    printf("Usage: msgscan32 --handle <HWND> [output-file]\n");
-    printf("Usage: msgscan32 --class \"window class\" [output-file]\n");
-    printf("Usage: msgscan32 --class \"window class\" --text \"window text\" [output-file]\n");
-#endif
-    printf("\n");
-    printf("You can stop this program by Ctrl+C.\n");
-}
+#include "common.h"
 
 typedef BOOL (APIENTRY *INSTALL_PROC)(HWND hwndNotify, HWND hwndTarget);
 typedef BOOL (APIENTRY *UNINSTALL_PROC)(void);
 
-HINSTANCE g_hInstance = NULL;
 HINSTANCE g_hinstDLL = NULL;
 HWND g_hwndNotify = NULL;
 HWND g_hwndTarget = NULL;
@@ -144,33 +118,29 @@ BOOL DoHook(HWND hwnd, HWND hwndTarget)
     return TRUE;
 }
 
-BOOL DoData(HWND hwnd, LPTSTR psz)
+BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
 {
-    INT ich;
+    DestroyWindow(g_hwndNotify);
 
-    ich = lstrlen(psz);
-    if (ich && psz[ich - 1] == '\n')
+    DoUnhook(g_hwndNotify);
+
+    if (g_filename && g_fp)
     {
-        psz[ich - 1] = 0;
-        if ((ich - 1) && psz[ich - 2] == '\r')
-        {
-            psz[ich - 2] = 0;
-        }
+        fclose(g_fp);
+        g_fp = NULL;
     }
 
-    if (g_fp)
-    {
-        fprintf(g_fp, "%s\n", psz);
-    }
-
-    if (strstr(psz, "R: WM_NCDESTROY") == psz)
-    {
-        DestroyWindow(hwnd);
-    }
+    return FALSE;
 }
+
+BOOL DoData(HWND hwnd, LPTSTR psz);
 
 BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 {
+    EnableProcessPriviledge(SE_DEBUG_NAME);
+
+    SetConsoleCtrlHandler(HandlerRoutine, TRUE);
+
     if (!DoHook(hwnd, g_hwndTarget))
     {
         fprintf(stderr, "ERROR: Unable to hook\n");
@@ -178,6 +148,8 @@ BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     }
 
     fprintf(stderr, "Press Ctrl+C to exit.\n");
+
+    SetTimer(hwnd, 999, 1000, NULL);
     return TRUE;
 }
 
@@ -200,6 +172,8 @@ BOOL OnCopyData(HWND hwnd, HWND hwndFrom, PCOPYDATASTRUCT pcds)
     return DoData(hwnd, psz);
 }
 
+void OnTimer(HWND hwnd, UINT id);
+
 LRESULT CALLBACK
 WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -208,6 +182,7 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hwnd, WM_CREATE, OnCreate);
         HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
         HANDLE_MSG(hwnd, WM_COPYDATA, OnCopyData);
+        HANDLE_MSG(hwnd, WM_TIMER, OnTimer);
     default:
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
@@ -440,132 +415,4 @@ DoCreateWindow(HWND hwndTarget,
     g_hwndNotify = hwnd;
 
     return TRUE;
-}
-
-static BOOL WINAPI HandlerRoutine(DWORD dwCtrlType)
-{
-    DestroyWindow(g_hwndNotify);
-
-    DoUnhook(g_hwndNotify);
-
-    if (g_filename && g_fp)
-    {
-        fclose(g_fp);
-        g_fp = NULL;
-    }
-
-    return FALSE;
-}
-
-int main(int argc, char **argv)
-{
-    char *endptr;
-    HWND hwndTarget = NULL;
-    const char *class_name = NULL;
-    const char *text = NULL;
-    const char *filename = NULL;
-    int i;
-    MSG msg;
-
-    SetConsoleCtrlHandler(HandlerRoutine, TRUE);
-
-    g_hInstance = GetModuleHandle(NULL);
-    EnableProcessPriviledge(SE_DEBUG_NAME);
-
-    if (argc <= 1)
-    {
-        show_help();
-        return EXIT_FAILURE;
-    }
-
-    for (i = 1; i < argc; ++i)
-    {
-        const char *arg = argv[i];
-
-        if (strcmp(arg, "--help") == 0)
-        {
-            show_help();
-            return EXIT_SUCCESS;
-        }
-
-        if (strcmp(arg, "--version") == 0)
-        {
-            show_version();
-            return EXIT_SUCCESS;
-        }
-
-        if (strcmp(arg, "--handle") == 0)
-        {
-            if (i + 1 >= argc)
-            {
-                fprintf(stderr, "ERROR: Option '--handle' needs an operand\n");
-                show_help();
-                return EXIT_FAILURE;
-            }
-
-            arg = argv[++i];
-            hwndTarget = (HWND)(ULONG_PTR)strtoul(arg, &endptr, 16);
-            if (*endptr != 0 || !IsWindow(hwndTarget))
-            {
-                hwndTarget = (HWND)(ULONG_PTR)strtoul(arg, &endptr, 10);
-                if (*endptr != 0 || !IsWindow(hwndTarget))
-                {
-                    fprintf(stderr, "ERROR: '%s' is not window handle\n", arg);
-                    return EXIT_FAILURE;
-                }
-            }
-            continue;
-        }
-
-        if (strcmp(arg, "--class") == 0)
-        {
-            if (i + 1 >= argc)
-            {
-                fprintf(stderr, "ERROR: Option '--class' needs an operand\n");
-                show_help();
-                return EXIT_FAILURE;
-            }
-            class_name = argv[++i];
-            continue;
-        }
-
-        if (strcmp(arg, "--text") == 0)
-        {
-            if (i + 1 >= argc)
-            {
-                fprintf(stderr, "ERROR: Option '--text' needs an operand\n");
-                show_help();
-                return EXIT_FAILURE;
-            }
-            text = argv[++i];
-            continue;
-        }
-
-        if (arg[0] == '-')
-        {
-            fprintf(stderr, "ERROR: Invalid option '%s'\n", arg);
-            return EXIT_FAILURE;
-        }
-
-        if (!filename)
-        {
-            filename = arg;
-        }
-        else
-        {
-            fprintf(stderr, "ERROR: Multiple output specified\n");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (!DoCreateWindow(hwndTarget, class_name, text, filename))
-        return EXIT_FAILURE;
-
-    while (GetMessage(&msg, NULL, 0, 0))
-    {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-
-    return EXIT_SUCCESS;
 }

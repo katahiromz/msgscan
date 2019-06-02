@@ -1,5 +1,5 @@
 # msgscan32.exe/msgscan64.exe
-add_executable(msgscan msgscan.c)
+add_executable(msgscan msgscan.c main.c)
 target_link_libraries(msgscan shlwapi psapi)
 
 if (CMAKE_SIZEOF_VOID_P EQUAL 8)
