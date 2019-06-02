@@ -12,9 +12,9 @@
 #include <stdio.h>
 
 #ifdef _WIN64
-    #define VERSION_INFO "msgscan64 ver.0.2 by katahiromz"
+    #define VERSION_INFO "msgscan64 ver.0.3 by katahiromz"
 #else
-    #define VERSION_INFO "msgscan32 ver.0.2 by katahiromz"
+    #define VERSION_INFO "msgscan32 ver.0.3 by katahiromz"
 #endif
 
 void show_version(void)
@@ -553,7 +553,7 @@ int main(int argc, char **argv)
         }
         else
         {
-            fprintf(stderr, "ERROR: Multiple input specified\n");
+            fprintf(stderr, "ERROR: Multiple output specified\n");
             return EXIT_FAILURE;
         }
     }
