@@ -216,11 +216,13 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 BOOL NormalizeNTPath(TCHAR *pszDest, size_t cchDestMax, LPCTSTR pszSrc)
 {
-    StringCbCopy(pszDest, cchDestMax, pszSrc);
-
     INT cchSrc = lstrlen(pszSrc);
     TCHAR szNTPath[MAX_PATH], szDrive[MAX_PATH] = TEXT("A:");
-    for (TCHAR cDrive = 'A'; cDrive <= 'Z'; ++cDrive)
+    TCHAR cDrive;
+
+    StringCbCopy(pszDest, cchDestMax, pszSrc);
+
+    for (cDrive = 'A'; cDrive <= 'Z'; ++cDrive)
     {
         szDrive[0] = cDrive;
         szNTPath[0] = 0;
