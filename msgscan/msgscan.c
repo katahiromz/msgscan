@@ -12,9 +12,9 @@
 #include <stdio.h>
 
 #ifdef _WIN64
-    #define VERSION_INFO "msgscan64 ver.0.1 by katahiromz"
+    #define VERSION_INFO "msgscan64 ver.0.2 by katahiromz"
 #else
-    #define VERSION_INFO "msgscan32 ver.0.1 by katahiromz"
+    #define VERSION_INFO "msgscan32 ver.0.2 by katahiromz"
 #endif
 
 void show_version(void)
@@ -25,16 +25,16 @@ void show_version(void)
 void show_help(void)
 {
 #ifdef _WIN64
-    printf("Usage: msgscan64 --handle <HWND>\n");
-    printf("Usage: msgscan64 --class \"window class\"\n");
-    printf("Usage: msgscan64 --class \"window class\" --text \"window text\"\n");
+    printf("Usage: msgscan64 --handle <HWND> [output-file]\n");
+    printf("Usage: msgscan64 --class \"window class\" [output-file]\n");
+    printf("Usage: msgscan64 --class \"window class\" --text \"window text\" [output-file]\n");
 #else
-    printf("Usage: msgscan32 --handle <HWND>\n");
-    printf("Usage: msgscan32 --class \"window class\"\n");
-    printf("Usage: msgscan32 --class \"window class\" --text \"window text\"\n");
+    printf("Usage: msgscan32 --handle <HWND> [output-file]\n");
+    printf("Usage: msgscan32 --class \"window class\" [output-file]\n");
+    printf("Usage: msgscan32 --class \"window class\" --text \"window text\" [output-file]\n");
 #endif
     printf("\n");
-    printf("You can stop this program by Ctrl+C\n");
+    printf("You can stop this program by Ctrl+C.\n");
 }
 
 typedef BOOL (APIENTRY *INSTALL_PROC)(HWND hwndNotify, HWND hwndTarget);
